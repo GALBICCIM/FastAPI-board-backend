@@ -9,6 +9,6 @@ Base = declarative_base()
 class Posts(Base):
    __tablename__ = "posts"
 
-   id = Column(Integer, primary_key=True)
+   id = Column(Integer, primary_key=True, autoincrement=True)
    title = Column(String, nullable=False)
    author = Column(String, nullable=False)
