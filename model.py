@@ -12,3 +12,5 @@ class Posts(Base):
    id = Column(Integer, primary_key=True, autoincrement=True)
    title = Column(String, nullable=False)
    author = Column(String, nullable=False)
+   content = Column(String, nullable=False)
+   password = Column(Integer, nullable=False)
