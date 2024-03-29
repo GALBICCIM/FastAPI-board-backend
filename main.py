@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from database import *
 from model import Posts
 from sqlalchemy.future import select
-from sqlalchemy.orm import joinedload
 
 
 app = FastAPI()
@@ -19,17 +18,46 @@ class PostRequest(BaseModel):
 #    password: int
 
 
+# GET 모든 글 불러오기 엔드포인트
+@app.get("/posts/")
+async def getAllPosts():
+   async with AsyncSessionLocal() as session:
+      posts_list = []
+      result = await session.execute(select(Posts))  # 모든 데이터를 가져오는 쿼리문
+      posts = result.scalars().all()
+      
+      for post in posts:
+         posts_list.append({
+               "id": post.id,
+               "title": post.title,
+               "author": post.author,
+               "content": post.content
+         })
+         
+      page_count = len(posts_list)
+         
+      return {
+         "page_count": page_count,
+         "posts": posts_list
+      }
+
+
 # GET 특정 글 불러오기 엔드포인트
 @app.get("/posts/{post_id}")
 async def getPost(post_id: int):
    async with AsyncSessionLocal() as session:
-        result = await session.execute(select(Posts).filter(Posts.id == post_id))
-        post_info = result.scalars().first()
+         result = await session.execute(select(Posts).filter(Posts.id == post_id))  # 글 쿼리문
+         post_info = result.scalars().first()
         
-        return {
-            "ok": True,
-            "data": post_info
-        }
+         return {
+            "post": {
+               "id": post_id,
+               "title": post_info.title,
+               "author": post_info.author,
+               "content": post_info.content
+            }
+         }
+
 
 # POST 글 작성 엔드포인트
 @app.post("/posts/")
@@ -75,8 +103,3 @@ async def delPost(post_id: int, password: int):
       await session.commit()
       
       return {"ok": True}
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, port=8000)
