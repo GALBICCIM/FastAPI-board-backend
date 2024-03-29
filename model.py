@@ -5,12 +5,13 @@ from sqlalchemy.ext.declarative import declarative_base
 # SQL 베이스 정의
 Base = declarative_base()
 
+
 # 요청 객체 모델 정의
 class Posts(Base):
-   __tablename__ = "posts"
+    __tablename__ = "posts"
 
-   id = Column(Integer, primary_key=True, autoincrement=True)
-   title = Column(String, nullable=False)
-   author = Column(String, nullable=False)
-   content = Column(String, nullable=False)
-   password = Column(Integer, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String, nullable=False)
+    author = Column(String, nullable=False)
+    content = Column(String, nullable=False)
+    password = Column(Integer, nullable=False)
