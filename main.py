@@ -1,7 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from database import AsyncSessionLocal
+from database import *
 from model import Posts
+from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload
 
 
 app = FastAPI()
@@ -16,6 +18,18 @@ class PostRequest(BaseModel):
 #    post_id: int
 #    password: int
 
+
+# GET 특정 글 불러오기 엔드포인트
+@app.get("/posts/{post_id}")
+async def getPost(post_id: int):
+   async with AsyncSessionLocal() as session:
+        result = await session.execute(select(Posts).filter(Posts.id == post_id))
+        post_info = result.scalars().first()
+        
+        return {
+            "ok": True,
+            "data": post_info
+        }
 
 # POST 글 작성 엔드포인트
 @app.post("/posts/")
@@ -49,11 +63,13 @@ async def reqPost(post: PostRequest):
 async def delPost(post_id: int, password: int):
    async with AsyncSessionLocal() as session:
       post = await session.get(Posts, post_id)  # 게시물 불러오기 [parameter: (model, PRIMARY KEY)]
+      # 게시물이 있는지 확인
       if post is None:
-            raise HTTPException(status_code = 404, detail="게시물을 찾을 수 없습니다.")
+         raise HTTPException(status_code = 404, detail="게시물을 찾을 수 없습니다.")
       
-      if post.password != password:  # 게시물 비밀번호와 삭제할 게시물 비밀번호가 일치한지 확인
-         raise HTTPException(status_code = 401, detail="패스워드가 일치하지 않습니다.")
+      # 게시물 비밀번호와 삭제할 게시물 비밀번호가 일치한지 확인
+      if post.password != password:
+         return {"ok": False}
 
       await session.delete(post)
       await session.commit()
