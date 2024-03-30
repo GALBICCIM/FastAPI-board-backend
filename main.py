@@ -32,68 +32,41 @@ class CommentRequest(BaseModel):
 @app.get("/posts/")
 async def getAllPosts():
     async with AsyncSessionLocal() as session:
-        # posts_list = []
-        # result = await session.execute(select(Posts))  # 모든 데이터를 가져오는 쿼리문
-        # posts = result.scalars().all()
-
-        # for post in posts:
-        #     comments_list = []
-        #     comments = await session.execute(
-        #         select(Comments).filter(Comments.post_id == post.id)
-        #     )
-
-        #     for comment in comments:
-        #         comments_list.append(
-        #             {
-        #                 "id": comment.id,
-        #                 "author": comment.author,
-        #                 "content": comment.content,
-        #             }
-        #         )
-
-        #     posts_list.append(
-        #         {
-        #             "id": post.id,
-        #             "title": post.title,
-        #             "author": post.author,
-        #             "content": post.content,
-        #             "comments": comments_list,
-        #         }
-        #     )
-
-        # page_count = len(posts_list)
-
-        # return {"page_count": page_count, "posts": posts_list}
-
-        # Posts와 Comments 테이블을 조인하여 한 번의 쿼리로 모든 데이터를 가져옴
-        query = select(Posts, Comments).join(Comments).order_by(Posts.id, Comments.id)
-        result = await session.execute(query)
-        posts_with_comments = result.scalars().all()
-
         posts_list = []
-        current_post = None
-        for post, comment in posts_with_comments:
-            # 새로운 게시물에 도달하면 이전 게시물을 결과 리스트에 추가
-            if current_post is None or current_post.id != post.id:
-                if current_post is not None:
-                    posts_list.append(current_post)
-                current_post = {
+        comments_list = []
+
+        posts_result = await session.execute(
+            select(Posts)
+        )  # 모든 데이터를 가져오는 쿼리문
+        posts = posts_result.scalars().all()
+
+        for post in posts:
+            comments_result = await session.execute(
+                select(Comments).filter(Comments.post_id == post.id)
+            )
+            comments = comments_result.scalars().all()
+
+            for comment in comments:
+                comments_list.append(
+                    {
+                        "id": comment.id,
+                        "author": comment.author,
+                        "content": comment.content,
+                    }
+                )
+
+            posts_list.append(
+                {
                     "id": post.id,
                     "title": post.title,
                     "author": post.author,
                     "content": post.content,
-                    "comments": [],
+                    "comments": comments_list,
                 }
-            # 현재 댓글을 현재 게시물에 추가
-            current_post["comments"].append(
-                {"id": comment.id, "author": comment.author, "content": comment.content}
             )
 
-        # 마지막 게시물을 결과 리스트에 추가
-        if current_post is not None:
-            posts_list.append(current_post)
-
         page_count = len(posts_list)
+
         return {"page_count": page_count, "posts": posts_list}
 
 
@@ -101,24 +74,32 @@ async def getAllPosts():
 @app.get("/posts/{post_id}")
 async def getPost(post_id: int):
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
+        comments_list = []
+        post_result = await session.execute(
             select(Posts).filter(Posts.id == post_id)
         )  # 글 쿼리문
-        post_info = result.scalars().first()
+        post = post_result.scalars().first()
 
-        comments = await session.execute(
-            select(Comments).filter(Comments.post_id == post_info.id)
-        )  # 모든 댓글 불러오기
-        comments_list = [
-            comment.content for comment in comments.scalars().all()
-        ]  # 댓글 리스트에 넣기
+        comments_result = await session.execute(
+            select(Comments).filter(Comments.post_id == post.id)
+        )
+        comments = comments_result.scalars().all()
+
+        for comment in comments:
+            comments_list.append(
+                {
+                    "id": comment.id,
+                    "author": comment.author,
+                    "content": comment.content,
+                }
+            )
 
         return {
             "post": {
                 "id": post_id,
-                "title": post_info.title,
-                "author": post_info.author,
-                "content": post_info.content,
+                "title": post.title,
+                "author": post.author,
+                "content": post.content,
                 "comments": comments_list,
             }
         }
@@ -173,6 +154,7 @@ async def delPost(post_id: int, password: int):
         post = await session.get(
             Posts, post_id
         )  # 게시물 불러오기 [parameter: (model, PRIMARY KEY)]
+
         # 게시물이 있는지 확인
         if post is None:
             raise HTTPException(status_code=404, detail="게시물을 찾을 수 없습니다.")
@@ -182,6 +164,36 @@ async def delPost(post_id: int, password: int):
             return {"ok": False}
 
         await session.delete(post)
+        await session.commit()
+
+        return {"ok": True}
+
+
+# DELETE 댓글 삭제 엔드포인트
+@app.delete("/posts/{post_id}/comments/{comment_id}")
+async def delComment(post_id: int, comment_id: int, password: str):
+    async with AsyncSessionLocal() as session:
+        posts_result = await session.execute(
+            select(Posts).filter(Posts.id == post_id)
+        )  # 모든 데이터를 가져오는 쿼리문
+        post = posts_result.scalars().first()
+
+        comments_result = await session.execute(
+            select(Comments).filter(
+                and_(Comments.post_id == post_id, Comments.id == comment_id)
+            )
+        )
+        comment = comments_result.scalars().first()
+
+        if post is None or comment is None:
+            raise HTTPException(
+                status_code=404, detail="게시물 또는 댓글을 찾을 수 없습니다."
+            )
+
+        if comment.password != password:
+            return {"ok": False}
+
+        await session.delete(comment)
         await session.commit()
 
         return {"ok": True}
