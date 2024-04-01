@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from database import *
-from model import Posts, Comments
+from db.core import *
+from db.posts import Posts
+from db.comments import Comments
 from sqlalchemy.future import select
 from typing import List
 
