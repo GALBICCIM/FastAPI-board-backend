@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from db.core import *
 from db.posts import Posts
 from db.comments import Comments
+from db.users import Users
 from sqlalchemy.future import select
 from typing import List
 
@@ -21,6 +22,12 @@ class PostRequest(BaseModel):
 class CommentRequest(BaseModel):
     author: str
     content: str
+    password: str
+
+
+class UserRequest(BaseModel):
+    email: str
+    name: str
     password: str
 
 
@@ -104,6 +111,21 @@ async def getPost(post_id: int):
                 "comments": comments_list,
             }
         }
+
+
+@app.post("/users/")
+async def reqUser(user: UserRequest):
+    async with AsyncSessionLocal() as session:
+        try:
+            new_user = Users(email=user.email, name=user.name, password=user.password)
+
+            session.add(new_user)
+            await session.commit()
+
+            return {"user_id": new_user.id}
+        except Exception as e:
+            await session.rollback()
+            raise HTTPException(status_code=500, detail=f"계정 생성 실패: {str(e)}")
 
 
 # POST 글 작성 엔드포인트
