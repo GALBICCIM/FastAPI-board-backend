@@ -1,39 +1,17 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from db.core import *
+from db.schema import *
 from db.posts import Posts
 from db.comments import Comments
 from db.users import Users
 from sqlalchemy.future import select
-from typing import List
+
+from passlib.context import CryptContext
 
 
 app = FastAPI()
 
-
-class PostRequest(BaseModel):
-    title: str
-    author: str
-    content: str
-    password: str
-    comments: List[str] = []  # 배열 초기화
-
-
-class CommentRequest(BaseModel):
-    author: str
-    content: str
-    password: str
-
-
-class UserRequest(BaseModel):
-    email: str
-    name: str
-    password: str
-
-
-# class DeleteRequest(BaseModel):
-#    post_id: int
-#    password: int
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # GET 모든 글 불러오기 엔드포인트
@@ -113,11 +91,23 @@ async def getPost(post_id: int):
         }
 
 
+# POST 계정 생성 엔드포인트
 @app.post("/users/")
 async def reqUser(user: UserRequest):
     async with AsyncSessionLocal() as session:
+        # email이 같은 유저 정보 불러오기
+        user_info = await session.query(Users).filter(Users.email == user.email).first()
+
+        # 유저 존재 확인
+        if user_info:
+            raise HTTPException(status_code=409, detail="유저가 이미 존재합니다.")
+
         try:
-            new_user = Users(email=user.email, name=user.name, password=user.password)
+            new_user = Users(
+                name=user.name,
+                email=user.email,
+                hashed_pw=pwd_context.hash(user.password),  # 비밀번호 해시
+            )
 
             session.add(new_user)
             await session.commit()
