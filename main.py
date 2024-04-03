@@ -96,17 +96,20 @@ async def getPost(post_id: int):
 async def reqUser(user: UserRequest):
     async with AsyncSessionLocal() as session:
         # email이 같은 유저 정보 불러오기
-        user_info = await session.query(Users).filter(Users.email == user.email).first()
+        user_info = await session.execute(
+            select(Users).filter(Users.email == user.email)
+        )
+        result = user_info.scalars().first()
 
         # 유저 존재 확인
-        if user_info:
+        if result:
             raise HTTPException(status_code=409, detail="유저가 이미 존재합니다.")
 
         try:
             new_user = Users(
                 name=user.name,
                 email=user.email,
-                hashed_pw=pwd_context.hash(user.password),  # 비밀번호 해시
+                hashed_pw=pwd_context.hash(user.password),  # 비밀번호 해싱
             )
 
             session.add(new_user)
