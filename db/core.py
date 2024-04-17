@@ -2,10 +2,10 @@ from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
+from config import settings
 
 
-# {SQL}://{USER}:{PASSWORD}@{HOST}:{PORT}/{SCHEMA NAME}
-DB_URL = "mysql+aiomysql://root:park3683@localhost:3306/anonymous_board"
+DB_URL = settings.DATABASE_URL
 
 async_engine = create_async_engine(DB_URL)
 
