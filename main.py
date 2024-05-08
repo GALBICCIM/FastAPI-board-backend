@@ -11,7 +11,7 @@ from passlib.context import CryptContext
 
 app = FastAPI()
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")  # 단방향 암호화 Hash
 
 
 # GET 모든 글 불러오기 엔드포인트
